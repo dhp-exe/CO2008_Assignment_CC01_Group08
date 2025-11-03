@@ -7,10 +7,14 @@ M = 4    # Our chosen filter length (M).
 print(f"--- Generating input.txt (N={N}) ---")
 
 # ---  Generate Test Data ---
-time = np.linspace(0, 10, N)
-# use different signals
-desired_signal = np.sin(time) + 0.5 * np.sin(time * 0.5)
-noise_white = 0.5 * np.random.randn(N)
+#
+# *** FIX: Use random "white noise" as the base signal, not a sine wave. ***
+#     A rounded sine wave creates repeating numbers (e.g., 0.1, 0.1, 0.1),
+#     which results in a singular (unsolvable) matrix.
+#     A rounded *random* signal will not have this problem.
+#
+desired_signal = np.random.randn(N)
+noise_white = 0.5 * np.random.randn(N) # Per assignment, add noise
 input_signal_1 = desired_signal + noise_white
 
 # --- Create the single input.txt file ---
@@ -18,8 +22,9 @@ input_signal_1 = desired_signal + noise_white
 # Total = 1000 floats.
 combined_input = np.concatenate((desired_signal, input_signal_1))
 
-# Save as a text file, one number per line
-# Using high precision to avoid rounding errors
+#
+# *** Save using "%.1f" as required by the assignment spec. ***
+#
 np.savetxt("input.txt", combined_input, fmt="%.1f")
 
-print(f"--- input.txt created with {len(combined_input)} floats. ---")
+print(f"--- input.txt (%.1f) created with {len(combined_input)} floats. ---")

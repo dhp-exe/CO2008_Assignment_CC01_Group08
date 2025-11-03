@@ -19,16 +19,15 @@ noise_colored = 0.2 * np.sin(time * 10) # Another noise type
 
 # --- 2. Create Files ---
 print("Step 2: Saving test files...")
-# Create the first test case (desired + white noise)
+# First test case (desired + white noise)
 input_signal_1 = desired_signal + noise_white
 
-# Save the files. The MIPS program will read these.
 # All numbers are floats rounded to 1 decimal point
 np.savetxt("desired.txt", desired_signal, fmt="%.1f")
 np.savetxt("noise_white.txt", noise_white, fmt="%.1f")
 np.savetxt("input_1.txt", input_signal_1, fmt="%.1f")
 
-# Create the second test case (desired + colored noise)
+# Second test case (desired + colored noise)
 input_signal_2 = desired_signal + noise_colored
 np.savetxt("noise_colored.txt", noise_colored, fmt="%.1f")
 np.savetxt("input_2.txt", input_signal_2, fmt="%.1f")
