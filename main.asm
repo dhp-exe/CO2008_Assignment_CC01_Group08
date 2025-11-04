@@ -8,7 +8,7 @@
 
 .data
     # --- Constants ---
-    N:              .word 500       # 500 sequences
+    N:              .word 10       # 10 sequences
     M:              .word 4         # 4 filter taps
     FLOAT_SIZE:     .word 4         # 4 bytes per float
     
@@ -23,10 +23,10 @@
     
     .align 4  # Align buffers to 4-byte boundary
 
-    # --- Buffers (N=500, M=4) ---
-    desired_signal_array: .space 2000
-    input_signal_array:   .space 2000
-    y_out_array:          .space 2000
+    # --- Buffers (N=10, M=4) ---
+    desired_signal_array: .space 40
+    input_signal_array:   .space 40
+    y_out_array:          .space 40
     gamma_d_vector:       .space 16
     h_opt_vector:         .space 16
     gamma_xx_temp:        .space 16
@@ -153,7 +153,7 @@ read_end:
     
 #-------------------------------------------------------------------
 # PROCEDURE: proc_write_stdout
-# Writes the 500-sequence output and MMSE to stdout.
+# Writes the 10-sequence output and MMSE to stdout.
 #-------------------------------------------------------------------
 proc_write_stdout:
     move $t0, $a0         # $t0 = &y_out_array
@@ -205,7 +205,7 @@ do_round:
     mov.s $f12, $f1       # $f12 = rounded float to print
     syscall
     
-    # Print a SPACE, not a newline
+    # Print a SPACE
     li $v0, 4
     la $a0, str_space
     syscall

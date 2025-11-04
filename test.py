@@ -1,102 +1,93 @@
 import numpy as np
 
-# --- 0. Define Constants ---
-N = 500  # 500 sequences in each file
-M = 4    # Our chosen filter length (M). Start small!
+# Constants
+N = 10   # 10 samples 
+M = 4    # Filter length
 
 print(f"--- Starting Wiener Filter Model (N={N}, M={M}) ---")
 
-# --- 1. Generate Test Data ---
-print("Step 1: Generating test data...")
-# Create a "desired" signal (e.g., a sine wave)
-time = np.linspace(0, 10, N)
+# --- Generate Desired and Noisy Input ---
+print("Generating input.txt with 20 numbers (10 desired + 10 input)...")
+
+# Desired signal: a simple sine wave
+time = np.linspace(0, 2 * np.pi, N)
 desired_signal = np.sin(time)
 
-# Create "noise" signal (e.g., white noise)
-# We'll create two noise types as required
-noise_white = 0.5 * np.random.randn(N)
-noise_colored = 0.2 * np.sin(time * 10) # Another noise type
+# Generate white noise
+noise = 0.2 * np.random.randn(N)
 
-# --- 2. Create Files ---
-print("Step 2: Saving test files...")
-# First test case (desired + white noise)
-input_signal_1 = desired_signal + noise_white
+# Input signal with noise: d(n) = s(n) + w(n)
+input_signal = desired_signal + noise
 
-# All numbers are floats rounded to 1 decimal point
+# Create input.txt with 20 numbers (first 10 desired, last 10 input)
+combined_signal = np.concatenate([desired_signal, input_signal])
+np.savetxt("input.txt", combined_signal, fmt="%.1f")
+
+# Also save individual files for reference
 np.savetxt("desired.txt", desired_signal, fmt="%.1f")
-np.savetxt("noise_white.txt", noise_white, fmt="%.1f")
-np.savetxt("input_1.txt", input_signal_1, fmt="%.1f")
+np.savetxt("input_signal.txt", input_signal, fmt="%.1f")
 
-# Second test case (desired + colored noise)
-input_signal_2 = desired_signal + noise_colored
-np.savetxt("noise_colored.txt", noise_colored, fmt="%.1f")
-np.savetxt("input_2.txt", input_signal_2, fmt="%.1f")
 
-print("   ... desired.txt, input_1.txt, input_2.txt created.")
+# --- Load Data from input.txt ---
+print("\nLoading data from input.txt...")
+combined_data = np.loadtxt("input.txt")
 
-# --- 3. Load Data ---
-print("Step 3: Loading data for processing (using input_1.txt)...")
-d = np.loadtxt("desired.txt")
-x = np.loadtxt("input_1.txt") # Using test case 1
+# Split into desired and input signals
+desired_signal = combined_data[:N]  # First 10 numbers
+input_signal = combined_data[N:]    # Last 10 numbers
+
+print(f"\nDesired signal: {desired_signal}")
+print(f"\nInput signal: {input_signal}")
 
 # Check for size mismatch
-if d.shape[0] != x.shape[0]:
+if desired_signal.shape[0] != input_signal.shape[0]:
     print("Error: size not match")
     exit()
 
-# --- 4. Calculate Autocorrelation Matrix R_M ---
-print("Step 4: Calculating Autocorrelation Matrix (R_M)...")
-# We need the autocorrelation of x, gamma_xx(k)
-# 'full' computes the correlation for all lags
-rxx_full = np.correlate(x, x, mode='full')
-
-# The zero-lag (k=0) is at the center
+# --- Calculate Autocorrelation Matrix R_M ---
+print("\nCalculating Autocorrelation Matrix (R_M)...")
+rxx_full = np.correlate(input_signal, input_signal, mode='full')
 zero_lag_index = N - 1
 
-# Build the M x M Toeplitz matrix R_M
 R_M = np.zeros((M, M))
 for l in range(M):
     for k in range(M):
         lag = l - k
-        # gamma_xx(lag) is at rxx_full[zero_lag_index + lag]
         R_M[l, k] = rxx_full[zero_lag_index + lag]
-# print("R_M:\n", R_M) # Uncomment to debug
 
-# --- 5. Calculate Cross-Correlation Vector gamma_d ---
-print("Step 5: Calculating Cross-Correlation Vector (gamma_d)...")
-# We need gamma_dx(l) for l = 0, 1, ..., M-1
-rdx_full = np.correlate(d, x, mode='full')
-
-# Get the lags from 0 to M-1
-# gamma_dx(l) is at rdx_full[zero_lag_index + l]
+# --- Calculate Cross-Correlation Vector gamma_d ---
+print("\nCalculating Cross-Correlation Vector (gamma_d)...")
+rdx_full = np.correlate(desired_signal, input_signal, mode='full')
 gamma_d = rdx_full[zero_lag_index : zero_lag_index + M]
-# print("gamma_d:\n", gamma_d) # Uncomment to debug
 
-# --- 6. Solve for Filter Coefficients (h_opt) ---
-print("Step 6: Solving for h_opt (optimize_coefficient)...")
-# Solves the linear system R_M * h = gamma_d
-h_opt = np.linalg.solve(R_M, gamma_d)
-print(f"   ... h_opt calculated: {h_opt}")
+# --- Solve for Filter Coefficients (optimize_coefficient) ---
+print("\nSolving for optimize_coefficient...")
+optimize_coefficient = np.linalg.solve(R_M, gamma_d)
+print(f"- Coefficients: {optimize_coefficient}")
 
-# --- 7. Apply the Filter to Get Output (y_out) ---
-print("Step 7: Applying filter to get output signal...")
-# 'same' mode gives an output of the same length as the input (N)
-y_out = np.convolve(x, h_opt, mode='same')
+# --- Apply the Filter to Get Output (output_signal) ---
+print("\nApplying Wiener filter...")
+output_signal_full = np.convolve(input_signal, optimize_coefficient, mode='full')
+output_signal = output_signal_full[:N]
 
-# --- 8. Calculate the MMSE ---
-print("Step 8: Calculating final MMSE...")
-# Calculate the error signal
-e = d - y_out
+# --- Calculate MMSE ---
+print("Calculating MMSE...")
+error = desired_signal - output_signal
+mmse = np.mean(error ** 2)         
+print(f"   ... MMSE = {mmse:.4f}")
 
-# Calculate the mean-square error
-mmse = np.mean(e**2)
-print(f"   ... Final MMSE: {mmse}")
+# --- Print Results to Terminal ---
+print("\n--- Final Results ---")
+output_str = " ".join([f"{val:.1f}" for val in output_signal])
+print("Filtered output:")
+print(output_str)
+print(f"MMSE: {mmse:.4f}")
 
-# --- 9. Write the Final Output File ---
-print("Step 9: Writing final output.txt...")
-with open("output.txt", "w") as f:
-    # First, write all 500 output sequences
-    for val in y_out:
-        f.write(f"{val:.1f}\n") # Write as float with 1 decimal
-    
-    # Then, add the MM
+# # --- Write Results to output.txt ---
+# print("\nWriting output.txt...")
+# with open("output.txt", "w") as f:
+#     f.write("Filtered output:\n")
+#     f.write(output_str + "\n")
+#     f.write(f"MMSE: {mmse:.2f}\n")
+
+
