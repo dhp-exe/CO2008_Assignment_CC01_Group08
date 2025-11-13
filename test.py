@@ -1,7 +1,7 @@
 import numpy as np
 
 # Filter length M 
-M = 4
+M = 10
 
 try:
     desired_signal = np.loadtxt("desired.txt")
