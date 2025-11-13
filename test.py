@@ -1,47 +1,28 @@
 import numpy as np
 
-# Constants
-N = 10   # 10 samples 
-M = 4    # Filter length
+# Filter length M 
+M = 4    
 
-print(f"--- Starting Wiener Filter Model (N={N}, M={M}) ---")
+print(f"--- Starting Wiener Filter Model (M={M}) ---")
 
-# --- Generate Desired and Noisy Input ---
-print("Generating input.txt with 20 numbers (10 desired + 10 input)...")
+print("\nLoading data from desired.txt and input.txt...")
+try:
+    desired_signal = np.loadtxt("desired.txt")
+    input_signal = np.loadtxt("input.txt")
+except IOError as e:
+    print(f"Error loading files: {e}")
+    print("Please make sure 'desired.txt' and 'input.txt' are in the same directory.")
+    exit()
 
-# Desired signal: a simple sine wave
-time = np.linspace(0, 2 * np.pi, N)
-desired_signal = np.sin(time)
+# N is determined from the loaded data
+N = desired_signal.shape[0]
 
-# Generate white noise
-noise = 0.2 * np.random.randn(N)
-
-# Input signal with noise: d(n) = s(n) + w(n)
-input_signal = desired_signal + noise
-
-# Create input.txt with 20 numbers (first 10 desired, last 10 input)
-combined_signal = np.concatenate([desired_signal, input_signal])
-np.savetxt("input.txt", combined_signal, fmt="%.1f")
-
-# Also save individual files for reference
-np.savetxt("desired.txt", desired_signal, fmt="%.1f")
-np.savetxt("input_signal.txt", input_signal, fmt="%.1f")
-
-
-# --- Load Data from input.txt ---
-print("\nLoading data from input.txt...")
-combined_data = np.loadtxt("input.txt")
-
-# Split into desired and input signals
-desired_signal = combined_data[:N]  # First 10 numbers
-input_signal = combined_data[N:]    # Last 10 numbers
-
-print(f"\nDesired signal: {desired_signal}")
-print(f"\nInput signal: {input_signal}")
+print(f"\nDesired signal (N={N}): {desired_signal}")
+print(f"Input signal (N={N}):   {input_signal}")
 
 # Check for size mismatch
 if desired_signal.shape[0] != input_signal.shape[0]:
-    print("Error: size not match")
+    print("\nError: size not match")
     exit()
 
 # --- Calculate Autocorrelation Matrix R_M ---
@@ -62,8 +43,12 @@ gamma_d = rdx_full[zero_lag_index : zero_lag_index + M]
 
 # --- Solve for Filter Coefficients (optimize_coefficient) ---
 print("\nSolving for optimize_coefficient...")
-optimize_coefficient = np.linalg.solve(R_M, gamma_d)
-print(f"- Coefficients: {optimize_coefficient}")
+try:
+    optimize_coefficient = np.linalg.solve(R_M, gamma_d)
+    print(f"- Coefficients: {optimize_coefficient}")
+except np.linalg.LinAlgError:
+    print("Error: Autocorrelation matrix R_M is singular, cannot solve for coefficients.")
+    exit()
 
 # --- Apply the Filter to Get Output (output_signal) ---
 print("\nApplying Wiener filter...")
@@ -79,15 +64,5 @@ print(f"   ... MMSE = {mmse:.4f}")
 # --- Print Results to Terminal ---
 print("\n--- Final Results ---")
 output_str = " ".join([f"{val:.1f}" for val in output_signal])
-print("Filtered output:")
-print(output_str)
-print(f"MMSE: {mmse:.4f}")
-
-# # --- Write Results to output.txt ---
-# print("\nWriting output.txt...")
-# with open("output.txt", "w") as f:
-#     f.write("Filtered output:\n")
-#     f.write(output_str + "\n")
-#     f.write(f"MMSE: {mmse:.2f}\n")
-
-
+print(f"Filtered output: {output_str}")
+print(f"MMSE: {mmse:.1f}")
