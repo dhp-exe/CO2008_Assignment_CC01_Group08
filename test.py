@@ -5,7 +5,7 @@ M = 10
 
 try:
     desired_signal = np.loadtxt("desired.txt")
-    input_signal = np.loadtxt("input.txt")
+    input_signal = np.loadtxt("input_1.txt")
 except IOError as e:
     print(f"Error loading files: {e}")
     exit()
