@@ -9,11 +9,11 @@
 .data
     # --- Constants ---
     N:              .word 10       # 10 sequences
-    M:              .word 4         # 4 filter taps
+    M:              .word 10       # M = 10
     FLOAT_SIZE:     .word 4         # 4 bytes per float
     
     # --- String Literals ---
-    str_filtered_out: .asciiz "Filtered output:\n"
+    str_filtered_out: .asciiz "Filtered output: "
     str_space:        .asciiz " "
     str_mmse_result:  .asciiz "\nMMSE: "
     str_newline:      .asciiz "\n"
@@ -23,22 +23,23 @@
     
     .align 4  # Align buffers to 4-byte boundary
 
-    # --- Buffers (N=10, M=4) ---
+    # --- Buffers (N=10, M=10) ---
     desired_signal_array: .space 40
     input_signal_array:   .space 40
     y_out_array:          .space 40
-    gamma_d_vector:       .space 16
-    h_opt_vector:         .space 16
-    gamma_xx_temp:        .space 16
-    R_M_matrix:           .space 64
-    aug_matrix:           .space 80
+    # Resized buffers below for M=10
+    gamma_d_vector:       .space 40  # M * 4 = 10 * 4 = 40
+    h_opt_vector:         .space 40  # M * 4 = 10 * 4 = 40
+    gamma_xx_temp:        .space 40  # M * 4 = 10 * 4 = 40
+    R_M_matrix:           .space 400 # M * M * 4 = 10 * 10 * 4 = 400
+    aug_matrix:           .space 440 # M * (M+1) * 4 = 10 * 11 * 4 = 440
 
 .text
 .globl main
 main:
     # Load constants
-    lw $s0, N             # $s0 = N = 500
-    lw $s1, M             # $s1 = M = 4
+    lw $s0, N             # $s0 = N = 10
+    lw $s1, M             # $s1 = M = 10
     lw $s2, FLOAT_SIZE    # $s2 = 4 (bytes)
     
     l.s $f30, float_zero  # Load 0.0 into $f30
@@ -156,6 +157,7 @@ read_end:
 # Writes the 10-sequence output and MMSE to stdout.
 #-------------------------------------------------------------------
 proc_write_stdout:
+	mov.s $f20, $f12
     move $t0, $a0         # $t0 = &y_out_array
     move $t1, $a1         # $t1 = N
     li $t2, 0             # $t2 = i = 0
@@ -167,7 +169,7 @@ proc_write_stdout:
     cvt.s.w $f4, $f4      # $f4 = 10.0
     l.s $f5, float_half   # $f5 = 0.5 (for rounding)
 
-    # Print "Filtered output:" string FIRST
+    # Print "Filtered output:" string	
     li $v0, 4
     la $a0, str_filtered_out
     syscall
@@ -205,17 +207,24 @@ do_round:
     mov.s $f12, $f1       # $f12 = rounded float to print
     syscall
     
+    # START - Only print space if NOT the last element
+    addi $t5, $t1, -1     # $t5 = N - 1
+    beq $t2, $t5, skip_space # if (i == N-1), skip printing space
+    
     # Print a SPACE
     li $v0, 4
     la $a0, str_space
     syscall
+    
+skip_space:
+    # END
     
     addi $t2, $t2, 1      # i++
     j write_loop
 
 write_mmse:
     # Round MMSE value to 1 decimal place
-    mov.s $f1, $f12       # MMSE value
+    mov.s $f1, $f20       # MMSE value
     mul.s $f1, $f1, $f4   # Multiply by 10
     l.s $f6, float_zero
     c.lt.s $f1, $f6       # Check if negative
@@ -392,7 +401,7 @@ build_R_M_loop1:
     addi $sp, $sp, -4
     sw $t0, 0($sp)
     move $a0, $s0
-    move $a1, $t0    # This should be k = 0,1,2,3
+    move $a1, $t0    # This should be k = 0,1,2,3...M-1
     move $a2, $s3
     jal proc_calc_gamma_xx
     # RESTORE $t0 after function call
@@ -539,7 +548,10 @@ proc_solve_gaussian:
     move $s3, $a3
     
     lw $s4, 24($sp)       # $s4 = M (Load 5th arg)
-    li $t0, 5
+    
+    # FIX: Changed 'li $t0, 5' to be dynamic (M+1)
+    addi $t0, $s4, 1      # $t0 = M + 1 (width of augmented matrix)
+    
     li $t1, 0
 gauss_build_loop_i:
     bge $t1, $s4, gauss_build_end
