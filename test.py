@@ -128,15 +128,47 @@ def run_test_case(folder_path):
 
 
 def main():
-    test_folders = sorted(glob.glob(os.path.join("tests", "test_*")))
-    
-    if not test_folders:
-        print("No test folders found.")
-        return
+    current_dir = os.path.dirname(os.path.abspath(__file__))
 
-    for folder in test_folders:
-        if os.path.isdir(folder):
-            run_test_case(folder)
+    print(f"\n{'='*30}")
+    print(" SELECT TEST MODE")
+    print(f"{'='*30}")
+    print(" 1. Run LOCAL files (input.txt & desired.txt in this folder)")
+    print(" 2. Run BATCH tests (all folders inside tests/ directory)")
+    print(f"{'='*30}")
+    
+    choice = input("Enter option (1 or 2): ").strip()
+
+    # --- OPTION 1: Local Files ---
+    if choice == '1':
+        print(f"\n[Mode] Running local files in: {current_dir}")
+        
+        # Check if files exist
+        local_input = os.path.join(current_dir, "input.txt")
+        local_desired = os.path.join(current_dir, "desired.txt")
+
+        if os.path.exists(local_input) and os.path.exists(local_desired):
+            # Pass current directory to your existing function
+            run_test_case(current_dir) 
+        else:
+            print(f"Error: Could not find 'input.txt' or 'desired.txt' in {current_dir}")
+
+    # --- OPTION 2: Batch Tests ---
+    elif choice == '2':
+        print("\n[Mode] Running batch tests from 'tests/' folder...")
+        
+        test_folders = sorted(glob.glob(os.path.join("tests", "test_*")))
+        
+        if not test_folders:
+            print("No test folders found in 'tests/' directory.")
+            return
+
+        for folder in test_folders:
+            if os.path.isdir(folder):
+                run_test_case(folder)
+                
+    else:
+        print("\nInvalid selection. Please run the script again and choose 1 or 2.")
 
 if __name__ == "__main__":
     main()
